@@ -11,14 +11,16 @@ import com.google.gson.Gson;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 
 public class NoteAPI {
     // TODO: Implement the API using OkHttp!
     // TODO: - getNote (maybe getNoteAsync)
     // TODO: - putNote (don't need putNotAsync, probably)
-    // TODO: Read the docs: https://square.github.io/okhttp/
+    // TODO: Read the docs: https://urldefense.com/v3/__https://square.github.io/okhttp/__;!!Mih3wA!GQIXJFdpiGC2bRITo8bZtEiiI56B5f8eyw8fDToGOQQAgF-pGDUtgw95IIsKRdpgcj46RSprKXwgVX4S$
     // TODO: Read the docs: https://sharednotes.goto.ucsd.edu/docs
 
     private volatile static NoteAPI instance = null;
@@ -58,6 +60,50 @@ public class NoteAPI {
             assert response.body() != null;
             var body = response.body().string();
             Log.i("ECHO", body);
+            return body;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @WorkerThread
+    public Note get(String msg) {
+        // URLs cannot contain spaces, so we replace them with %20.
+        String encodedMsg = msg.replace(" ", "%20");
+
+        var request = new Request.Builder()
+                .url("https://sharednotes.goto.ucsd.edu/notes/" + encodedMsg)
+                .method("GET", null)
+                .build();
+
+        try (var response = client.newCall(request).execute()) {
+            assert response.body() != null;
+            var body = response.body().string();
+            var note = Note.fromJSON(body);
+            return note;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    @WorkerThread
+    public String put(Note note) {
+        // URLs cannot contain spaces, so we replace them with %20.
+        String title = note.title.replace(" ", "%20");
+
+        RequestBody content = RequestBody.create(note.toJSON(), MediaType.get("application/json; charset=utf-8"));
+
+        var request = new Request.Builder()
+                .url("https://sharednotes.goto.ucsd.edu/notes/" + title)
+                .method("PUT", content)
+                .build();
+
+        try (var response = client.newCall(request).execute()) {
+            assert response.body() != null;
+            var body = response.body().string();
             return body;
         } catch (Exception e) {
             e.printStackTrace();
